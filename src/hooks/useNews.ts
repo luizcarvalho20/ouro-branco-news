@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewsItem {
   title: string;
@@ -31,87 +32,72 @@ export const useNews = () => {
         setLoading(true);
         setError(null);
         
-        // Para desenvolvimento, vamos usar dados mock
-        // Em produção, você precisará configurar a API key no backend
-        const mockNews: NewsItem[] = [
-          {
-            title: "Ouro Branco comemora avanços no turismo rural",
-            description: "A cidade de Ouro Branco registra crescimento significativo no setor de turismo rural, atraindo visitantes de toda a região metropolitana de Belo Horizonte.",
-            content: "Lorem ipsum dolor sit amet...",
-            url: "#",
-            image: "/placeholder.svg",
-            publishedAt: new Date().toISOString(),
-            source: {
-              name: "Portal Ouro Branco",
-              url: "#"
-            }
-          },
-          {
-            title: "Novo investimento em infraestrutura chegará à Serra",
-            description: "Governo anuncia investimentos em melhorias nas estradas da região serrana, beneficiando o acesso a Ouro Branco.",
-            content: "Lorem ipsum dolor sit amet...",
-            url: "#",
-            image: "/placeholder.svg",
-            publishedAt: new Date(Date.now() - 3600000).toISOString(),
-            source: {
-              name: "G1 Minas",
-              url: "#"
-            }
-          },
-          {
-            title: "Festival de Inverno movimenta economia local",
-            description: "Evento cultural atrai milhares de visitantes e fortalece comércio local durante temporada de inverno.",
-            content: "Lorem ipsum dolor sit amet...",
-            url: "#",
-            image: "/placeholder.svg",
-            publishedAt: new Date(Date.now() - 7200000).toISOString(),
-            source: {
-              name: "Estado de Minas",
-              url: "#"
-            }
-          },
-          {
-            title: "Preservação ambiental ganha força na região",
-            description: "Novos projetos de conservação da mata atlântica são implementados com apoio da comunidade local.",
-            content: "Lorem ipsum dolor sit amet...",
-            url: "#",
-            image: "/placeholder.svg",
-            publishedAt: new Date(Date.now() - 10800000).toISOString(),
-            source: {
-              name: "Eco Notícias",
-              url: "#"
-            }
-          },
-          {
-            title: "Startup mineira desenvolve tecnologia sustentável",
-            description: "Empresa de Belo Horizonte cria solução inovadora para tratamento de água que será testada em Ouro Branco.",
-            content: "Lorem ipsum dolor sit amet...",
-            url: "#",
-            image: "/placeholder.svg",
-            publishedAt: new Date(Date.now() - 14400000).toISOString(),
-            source: {
-              name: "TechMG",
-              url: "#"
-            }
-          },
-          {
-            title: "Produtores rurais recebem certificação orgânica",
-            description: "Agricultores da região conquistam selo de produto orgânico, ampliando mercado consumidor.",
-            content: "Lorem ipsum dolor sit amet...",
-            url: "#",
-            image: "/placeholder.svg",
-            publishedAt: new Date(Date.now() - 18000000).toISOString(),
-            source: {
-              name: "Agro MG",
-              url: "#"
-            }
-          }
-        ];
+        // Buscar notícias do banco de dados
+        const { data: dbNews, error: dbError } = await supabase
+          .from('news')
+          .select('*')
+          .order('published_at', { ascending: false });
 
-        // Simular delay de rede
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        setNews(mockNews);
+        if (dbError) throw dbError;
+
+        // Converter formato do banco para o formato esperado
+        const convertedNews: NewsItem[] = (dbNews || []).map(item => ({
+          title: item.title,
+          description: item.description,
+          content: item.content,
+          url: item.source_url || "#",
+          image: item.image_url || "/placeholder.svg",
+          publishedAt: item.published_at,
+          source: {
+            name: item.source_name,
+            url: item.source_url || "#"
+          }
+        }));
+
+        // Se não houver notícias no banco, usar dados mock
+        if (convertedNews.length === 0) {
+          const mockNews: NewsItem[] = [
+            {
+              title: "Ouro Branco comemora avanços no turismo rural",
+              description: "A cidade de Ouro Branco registra crescimento significativo no setor de turismo rural, atraindo visitantes de toda a região metropolitana de Belo Horizonte.",
+              content: "Lorem ipsum dolor sit amet...",
+              url: "#",
+              image: "/placeholder.svg",
+              publishedAt: new Date().toISOString(),
+              source: {
+                name: "Portal Ouro Branco",
+                url: "#"
+              }
+            },
+            {
+              title: "Novo investimento em infraestrutura chegará à Serra",
+              description: "Governo anuncia investimentos em melhorias nas estradas da região serrana, beneficiando o acesso a Ouro Branco.",
+              content: "Lorem ipsum dolor sit amet...",
+              url: "#",
+              image: "/placeholder.svg",
+              publishedAt: new Date(Date.now() - 3600000).toISOString(),
+              source: {
+                name: "G1 Minas",
+                url: "#"
+              }
+            },
+            {
+              title: "Festival de Inverno movimenta economia local",
+              description: "Evento cultural atrai milhares de visitantes e fortalece comércio local durante temporada de inverno.",
+              content: "Lorem ipsum dolor sit amet...",
+              url: "#",
+              image: "/placeholder.svg",
+              publishedAt: new Date(Date.now() - 7200000).toISOString(),
+              source: {
+                name: "Estado de Minas",
+                url: "#"
+              }
+            }
+          ];
+          setNews(mockNews);
+        } else {
+          setNews(convertedNews);
+        }
         
       } catch (err) {
         setError('Erro ao carregar notícias. Tente novamente.');
